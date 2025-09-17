@@ -1,5 +1,5 @@
 all:
-	gcc -o project1 main.c -lrt
+	gcc -o main main.c -lrt
 
 clean:
-	rm project1
+	rm main

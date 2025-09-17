@@ -1,19 +1,63 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <sys/wait.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define MAX_LINE 80    // Maximum command length
 
-int main(int argc, char** argv){
+int main(void) {
+    pid_t p;
+    int should_run = 1;         // flag to determine when to exit program
+    int background = 0;         // flag for background process (&)
 
-    char *args[MAX_LINE/2 + 1];    //command lines arguments
-    int should_run = 1;   // flag to determine when to exit program
+    char input[MAX_LINE];          // raw input
+    char *args[MAX_LINE/2 + 1];    // command lines arguments -- HOLDS POINTERS NOT CHARACTERS
 
     while(should_run) {
-        printf("osh>");
+        printf("osh> ");
         fflush(stdout);
 
-        
-    }
+        if (fgets(input, MAX_LINE, stdin) == NULL) {    // read input from command line
+            perror("Cannot read input\n");
+            continue;
+        }
+        if (strncmp(input, "exit", 4) == 0) {     // QUIT if command = exit
+            should_run = 0;
+            printf("EXITING!\n");
+            continue;
+        }
 
+        int i = 0;                               // parse the input into args (tokenize)
+        char *token = strtok(input, " \t\n");
+        while(token != NULL) {
+            args[i++] = token;
+            token = strtok(NULL, " \t\n");
+        }
+        if (*args[i-1] == '&') {
+            args[i-1] = args[i];
+            background = 1;
+        }
+        else {
+            args[i] = NULL;
+        }
+
+
+        p = fork();                             // command execution begins w/ fork()
+        if (p < 0) {                            // fork failed
+            fprintf(stderr, "fork failed\n");
+            should_run = 0;
+            exit(0);
+        }
+        
+        else if (p == 0) {    // child process
+            
+            execvp(args[0], args);
+        }
+        else {                 // parent process - wait until child is done executing
+            wait(NULL);
+        }
+    }
     return 0;
 }
