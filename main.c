@@ -23,10 +23,15 @@ int main(void) {
             perror("Cannot read input\n");
             continue;
         }
+
+        if (input[0] == '\n' || input[0] == ' ' || input[0] == '\t') {
+          continue;
+        }
+
         if (strncmp(input, "exit", 4) == 0) {     // QUIT if command = exit
             should_run = 0;
             printf("EXITING!\n");
-            continue;
+            break;
         }
 
         int i = 0;                               // parse the input into args (tokenize)
@@ -35,12 +40,16 @@ int main(void) {
             args[i++] = token;
             token = strtok(NULL, " \t\n");
         }
-        if (*args[i-1] == '&') {
-            args[i-1] = args[i];
+
+        // if the last command is &, then remove it from the arguments
+        // and the parent will not call wait(), thus triggering a background process
+        if (*args[i-1] == '&') {               
+            args[i-1] = NULL;
             background = 1;
         }
         else {
             args[i] = NULL;
+            background = 0;
         }
 
 
@@ -56,6 +65,9 @@ int main(void) {
             execvp(args[0], args);
         }
         else {                 // parent process - wait until child is done executing
+            if (background == 1) {
+                continue;
+            }
             wait(NULL);
         }
     }
