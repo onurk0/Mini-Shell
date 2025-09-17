@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+// TODO: ADD A QUEUE FUNCTION FOR RECENTLY USED COMMANDS
+
 #define MAX_LINE 80    // Maximum command length
 
 int main(void) {
