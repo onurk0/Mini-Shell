@@ -171,6 +171,7 @@ int main(void) {
         
         /* Child process */
         else if (p == 0) { 
+
             if (outfile) {
                 int fd = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
                 if (fd < 0) {
@@ -189,7 +190,12 @@ int main(void) {
                 dup2(fd, STDIN_FILENO);
                 close(fd);
             }
-            execvp(args[0], args);
+
+            /* unrecognized commands print error message; recognized commands will run */
+            if (execvp(args[0], args) == -1) {
+                printf("%s: command not found\n" ,args[0]);
+                exit(1);
+            } 
         }
 
         /* Parent process will wait for child to finish unless background */
