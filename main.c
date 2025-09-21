@@ -122,9 +122,7 @@ int read_input(char *buffer, int buffersize, Stack *stack, char *dir) {
                     buffer[0] = '\0';
                 }
                 else {
-                    char *last_cmd = peek(stack);
-                    strcpy(buffer, last_cmd);
-                    printf("%s\n", buffer);
+                    strcpy(buffer, peek(stack));
                 }
             }
             return p;
@@ -250,7 +248,7 @@ int main(void)
         }
 
         /* reprompt if nothing is entered */
-        if (input[0] == '\n' || input[0] == ' ' || input[0] == '\t')
+        if (input[0] == '\0' || input[0] == ' ' || input[0] == '\t')
         {
             continue;
         }
@@ -261,10 +259,10 @@ int main(void)
             printf("EXITING!\n");
             break;
         }
+        
         push(&stack, input);
 
         /* PARSE/TOKENIZE INPUTS */
-        int i = 0;
         char *token = strtok(input, " \t\n");
         while (token)
         {
