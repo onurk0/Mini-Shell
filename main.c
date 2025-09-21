@@ -3,13 +3,14 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>   /* for file operations */
+#include <fcntl.h> /* for file operations */
 #include <termios.h>
 
 #define STACK_SIZE 5 /* used to store last 5 commands */
 #define MAX_LINE 80  /* maximum command length */
 int history_index = -1;
 
+/* terminal struct - save and use current terminal state*/
 struct termios org;
 
 /* Stack struct to 5 most recent commands */
@@ -19,6 +20,7 @@ typedef struct
     int top;
 } Stack;
 
+/* function prototypes */
 void init(Stack *stack);
 int isEmpty(Stack *stack);
 int isFull(Stack *stack);
@@ -33,52 +35,58 @@ void arrow_up(Stack *stack, char *line, char *dir);
 void arrow_down(Stack *stack, char *line, char *dir);
 int read_input(char *buffer, int buffersize, Stack *stack, char *dir);
 
-
-
 /* restore original terminal settings */
-void reset_terminal() {
+void reset_terminal()
+{
     tcsetattr(STDIN_FILENO, TCSANOW, &org);
 }
 
 /* enable raw mode for terminal input w/ no echo or line buffering*/
-void enable_raw_mode() {
+void enable_raw_mode()
+{
 
-    tcgetattr(STDIN_FILENO, &org);    /* save current terminal setting*/
-    atexit(reset_terminal);           /* ensure terminal is reset on exit*/
+    tcgetattr(STDIN_FILENO, &org); /* save current terminal setting*/
+    atexit(reset_terminal);        /* ensure terminal is reset on exit*/
 
-    struct termios raw = org;         /* load in original setting*/
-    raw.c_lflag &= ~(ECHO | ICANON);  /* disable echo and canonical mode*/
-    raw.c_cc[VMIN] = 1;               /* minimum number of read characters*/
-    raw.c_cc[VTIME] = 0;              /* no timeout*/
+    struct termios raw = org;        /* load in original setting*/
+    raw.c_lflag &= ~(ECHO | ICANON); /* disable echo and canonical mode*/
+    raw.c_cc[VMIN] = 1;              /* minimum number of read characters*/
+    raw.c_cc[VTIME] = 0;             /* no timeout*/
 
-    tcsetattr(STDIN_FILENO, TCSANOW, &raw);   /* apply settings*/
+    tcsetattr(STDIN_FILENO, TCSANOW, &raw); /* apply settings*/
 }
 
 /* read a single character from STDIN */
 /* return character if read successfully, -1 if not*/
-int key_read() {
+int key_read()
+{
     char c;
-    if (read(STDIN_FILENO, &c, 1) == 1) {
+    if (read(STDIN_FILENO, &c, 1) == 1)
+    {
         return c;
-    } 
+    }
     return -1;
 }
 
 /* display the prompt with current directory */
-void reprompt(const char *dir, const char *line) {
-    printf("\r\033[Kosh:%s> %s", dir, line);    /* display a clear line and print*/
+void reprompt(const char *dir, const char *line)
+{
+    printf("\r\033[Kosh:%s> %s", dir, line); /* display a clear line and print*/
     fflush(stdout);
 }
 
 /* Handle up arrow key (older commands)*/
-void arrow_up(Stack *stack, char *line, char *dir) {
+void arrow_up(Stack *stack, char *line, char *dir) 
+{
     /* nothing in history */
-    if (stack->top == -1) {
+    if (stack->top == -1)
+    {
         return;
     }
-    
+
     /* move up in history */
-    if (history_index < stack->top) {
+    if (history_index < stack->top)
+    {
         history_index++;
     }
     /* load previous command and reprompt */
@@ -87,13 +95,16 @@ void arrow_up(Stack *stack, char *line, char *dir) {
 }
 
 /* Handle down arrow key (recent commands)*/
-void arrow_down(Stack *stack, char *line, char *dir) {
+void arrow_down(Stack *stack, char *line, char *dir) 
+{
     // move down in history
-    if (history_index > 0) {
+    if (history_index > 0)
+    {
         history_index--;
         strcpy(line, stack->command[stack->top - history_index]);
     }
-    else {                 /*no history, clear line*/
+    else
+    { /*no history, clear line*/
         history_index = -1;
         line[0] = '\0';
     }
@@ -101,67 +112,81 @@ void arrow_down(Stack *stack, char *line, char *dir) {
 }
 
 /* read user input; handle special keys and history */
-int read_input(char *buffer, int buffersize, Stack *stack, char *dir) {
+int read_input(char *buffer, int buffersize, Stack *stack, char *dir) 
+{
     int p = 0;
     buffer[0] = '\0';
     history_index = -1;
 
-    while(1) {
+    while (1)
+    {
         int c = key_read();
 
         // enter key will execute or reprompt
-        if (c == '\n') {
+        if (c == '\n')
+        {
             buffer[p] = '\0';
             printf("\n");
 
             // handle !!
 
-            if (strcmp(buffer, "!!") == 0) {
-                if (isEmpty(stack)) {
+            if (strcmp(buffer, "!!") == 0)
+            {
+                if (isEmpty(stack))
+                {
                     printf("No recent commands\n");
                     buffer[0] = '\0';
                 }
-                else {
+                else
+                {
                     strcpy(buffer, peek(stack));
                 }
             }
             return p;
         }
-        else if (c == 127 || c == '\b') {    // handle backspace and update prompt
-            if (p > 0) {
+        else if (c == 127 || c == '\b')
+        { // handle backspace and update prompt
+            if (p > 0)
+            {
                 p--;
                 buffer[p] = '\0';
                 reprompt(dir, buffer);
             }
         }
-        else if (c == 27) {        // handle arrow keys
+        else if (c == 27)
+        { // handle arrow keys
             char sequence[2];
-            if (read(STDIN_FILENO, &sequence[0], 1) != 1) {
+            if (read(STDIN_FILENO, &sequence[0], 1) != 1)
+            {
                 continue;
             }
-            if (read(STDIN_FILENO, &sequence[1], 1) != 1) {
+            if (read(STDIN_FILENO, &sequence[1], 1) != 1)
+            {
                 continue;
             }
 
-            if (sequence[0] == '[') {
-                if (sequence[1] == 'A') {      // up arrow
-                    arrow_up(stack, buffer ,dir);
+            if (sequence[0] == '[')
+            {
+                if (sequence[1] == 'A')
+                { // up arrow
+                    arrow_up(stack, buffer, dir);
                     p = strlen(buffer);
                 }
-                else if (sequence[1] == 'B') {    // down arrow
+                else if (sequence[1] == 'B')
+                { // down arrow
                     arrow_down(stack, buffer, dir);
                     p = strlen(buffer);
                 }
             }
         }
-        else if (p < buffersize - 1 && c>= 32 && c <= 126) {
-            buffer[p++] = c;         // add printable character then reprompt
+        else if (p < buffersize - 1 && c >= 32 && c <= 126)
+        {
+            buffer[p++] = c; // add printable character then reprompt
             buffer[p] = '\0';
             reprompt(dir, buffer);
         }
     }
 }
-
 
 /* initialize stack */
 void init(Stack *stack)
@@ -227,7 +252,7 @@ int main(void)
     // flags for loop condition, background process, and pipes
     int should_run = 1, background = 0, seen_pipe = 0, j, k;
     Stack stack;
-    init(&stack); // create and initialize stack
+    init(&stack);                 // create and initialize stack
 
     char input[MAX_LINE];         // raw input
     char *args[MAX_LINE / 2 + 1]; // command lines arguments -- HOLDS POINTERS NOT CHARACTERS
@@ -239,11 +264,12 @@ int main(void)
     {
         seen_pipe = 0, j = 0, k = 0;
         infile = NULL, outfile = NULL;
-        getcwd(directory, sizeof(directory));              // get working directory
+        getcwd(directory, sizeof(directory)); // get working directory
         reprompt(strrchr(directory, '/') + 1, "");
 
         /* read from command line */
-        if (read_input(input, MAX_LINE, &stack, strrchr(directory, '/') + 1) == 0) {
+        if (read_input(input, MAX_LINE, &stack, strrchr(directory, '/') + 1) == 0)
+        {
             continue;
         }
 
@@ -259,7 +285,7 @@ int main(void)
             printf("EXITING!\n");
             break;
         }
-        
+
         push(&stack, input);
 
         /* PARSE/TOKENIZE INPUTS */
@@ -325,12 +351,13 @@ int main(void)
             left_args[j - 1] = NULL;
             background = 1;
         }
-        else if (seen_pipe && k > 0 && strcmp(right_args[k - 1], "&") == 0)
+        else if (seen_pipe && k > 0 && strcmp(right_args[k - 1], "&") == 0)  
         {
             right_args[k - 1] = NULL;
             background = 1;
         }
 
+        /* no pipes */
         if (!seen_pipe)
         {
             p1 = fork();
@@ -360,8 +387,10 @@ int main(void)
                 }
             }
         }
+        /* pipe */
         else
         {
+            /* run the left-hand commands */
             int fd[2];
             pipe(fd);
 
@@ -383,6 +412,7 @@ int main(void)
                 exit(1);
             }
 
+            /* run the right-hand commands*/
             p2 = fork();
             if (p2 == 0)
             {
@@ -402,6 +432,8 @@ int main(void)
             }
             close(fd[0]);
             close(fd[1]);
+
+            /* wait for other processes to finish */
             if (!background)
             {
                 wait(NULL);
